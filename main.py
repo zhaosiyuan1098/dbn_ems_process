@@ -5,6 +5,7 @@ from preprocess_3d import PreProcessor_3d
 from RBM import RBM
 from DBN import DBN
 from DBN import DBN_last_layer
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -153,36 +154,44 @@ def fft_dbn_train():
     fft_x_3d_features=preprocessor.x_2d_to_3d(fft_x_2d_features,samples=samples)
     return fft_x_3d_features
 
-    # x,y=window(origin_x)
 
-    # x_new,y_new=train_fft_dbn(origin_x=origin_x,option=option)
+def model_compare():
+    computer_setup()
+    option=Option()
+    loader = Loader(option)
+    x_3d,y_3d=loader.load_3d()
 
-    # splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
-    # tfms  = [None, [Categorize()]]
-    # batch_tfms=[TSStandardize(),TSNormalize()]
-    # dsets = TSDatasets(x, y, tfms=tfms, splits=splits, inplace=True)
-    # dsets
-    # bs=64
-    # dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[bs, bs*2])
+    preprocessor=PreProcessor_3d(x_3d,y_3d,option)
 
-    # archs = [(FCN, {}), (ResNet, {}), (xresnet1d34, {}), (ResCNN, {}), 
-    #         (LSTM, {'n_layers':1, 'bidirectional': False}), (LSTM, {'n_layers':2, 'bidirectional': False}), (LSTM, {'n_layers':3, 'bidirectional': False}), 
-    #         (LSTM, {'n_layers':1, 'bidirectional': True}), (LSTM, {'n_layers':2, 'bidirectional': True}), (LSTM, {'n_layers':3, 'bidirectional': True}),
-    #         (LSTM_FCN, {}), (LSTM_FCN, {'shuffle': False}), (InceptionTime, {}), (XceptionTime, {}), (OmniScaleCNN, {}), (mWDN, {'levels': 4})]
 
-    # results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'accuracy', 'time'])
-    # for i, (arch, k) in enumerate(archs):
-    #     model = create_model(arch, dls=dls, **k)
-    #     print(model.__class__.__name__)
-    #     learn = Learner(dls, model,  metrics=accuracy)
-    #     start = time.time()
-    #     learn.fit_one_cycle(100, 1e-3)
-    #     elapsed = time.time() - start
-    #     vals = learn.recorder.values[-1]
-    #     results.loc[i] = [arch.__name__, k, count_parameters(model), vals[0], vals[1], vals[2], int(elapsed)]
-    #     results.sort_values(by='accuracy', ascending=False, kind='stable', ignore_index=True, inplace=True)
-    #     # clear_output()
-    #     display(results)
+    x,y=preprocessor.window_3d(x_3d)
+
+    splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
+    tfms  = [None, [Categorize()]]
+    batch_tfms=[TSStandardize(),TSNormalize()]
+    dsets = TSDatasets(x, y, tfms=tfms, splits=splits, inplace=True)
+    dsets
+    bs=64
+    dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[bs, bs*2])
+
+    archs = [(FCN, {}), (ResNet, {}), (xresnet1d34, {}), (ResCNN, {}), 
+            (LSTM, {'n_layers':1, 'bidirectional': False}), (LSTM, {'n_layers':2, 'bidirectional': False}), (LSTM, {'n_layers':3, 'bidirectional': False}), 
+            (LSTM, {'n_layers':1, 'bidirectional': True}), (LSTM, {'n_layers':2, 'bidirectional': True}), (LSTM, {'n_layers':3, 'bidirectional': True}),
+            (LSTM_FCN, {}), (LSTM_FCN, {'shuffle': False}), (InceptionTime, {}), (XceptionTime, {}), (OmniScaleCNN, {}), (mWDN, {'levels': 4})]
+
+    results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'accuracy', 'time'])
+    for i, (arch, k) in enumerate(archs):
+        model = create_model(arch, dls=dls, **k)
+        print(model.__class__.__name__)
+        learn = Learner(dls, model,  metrics=accuracy)
+        start = time.time()
+        learn.fit_one_cycle(100, 1e-3)
+        elapsed = time.time() - start
+        vals = learn.recorder.values[-1]
+        results.loc[i] = [arch.__name__, k, count_parameters(model), vals[0], vals[1], vals[2], int(elapsed)]
+        results.sort_values(by='accuracy', ascending=False, kind='stable', ignore_index=True, inplace=True)
+        os.system('cls' if os.name == 'nt' else 'clear')
+        display(results)
 
 
 
@@ -205,8 +214,8 @@ def fft_dbn_train():
 
 
 
-fft_dbn_train()
-# tsai_valid()
+# fft_dbn_train()
+model_compare()
 # load()
 
 

@@ -67,6 +67,7 @@ class PreProcessor_3d:
         print("windowed x shape:"+str(x_new.shape))
         print("windowed y shape:"+str(y_new.shape))    
         print("window finish")
+        return x_new,y_new
         
     def generateTensor(self,x,y):
             x = torch.from_numpy(x).float()
