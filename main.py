@@ -1,6 +1,7 @@
 from option import Option
 from load import Loader
 from preprocess import PreProcessor
+from preprocess_3d import PreProcessor_3d
 from RBM import RBM
 from DBN import DBN
 from DBN import DBN_last_layer
@@ -119,51 +120,69 @@ def x_2d_to_3d(x,samples):
         new_x[i:(i+1),:,:]=x[i*x_2d_steps:(i+1)*x_2d_steps,:].T
     return new_x
 
-
-
-
-def tsai_main():
-    computer_setup()
-    option=Option()
-    loader = Loader(option)
-    origin_x,y=load()
-
-    # x = loader.load_data()
-    x,y=window(origin_x)
-
+def train_fft_dbn(origin_x,option):
     fft_x_3d,fft_x_2d=fft_3d(origin_x)
     fft_x_2d = torch.from_numpy(fft_x_2d).float()
+
     dbn = DBN(fft_x_2d.shape[1], option)
     dbn.train_DBN(fft_x_2d)
 
     y_new, x_new = dbn.reconstructor(fft_x_2d)
+    print(y_new.shape)
+    print(x_new.shape)
+    return y_new,x_new
 
-    splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
-    tfms  = [None, [Categorize()]]
-    batch_tfms=[TSStandardize(),TSNormalize()]
-    dsets = TSDatasets(x, y, tfms=tfms, splits=splits, inplace=True)
-    dsets
-    bs=64
-    dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[bs, bs*2])
 
-    archs = [(FCN, {}), (ResNet, {}), (xresnet1d34, {}), (ResCNN, {}), 
-            (LSTM, {'n_layers':1, 'bidirectional': False}), (LSTM, {'n_layers':2, 'bidirectional': False}), (LSTM, {'n_layers':3, 'bidirectional': False}), 
-            (LSTM, {'n_layers':1, 'bidirectional': True}), (LSTM, {'n_layers':2, 'bidirectional': True}), (LSTM, {'n_layers':3, 'bidirectional': True}),
-            (LSTM_FCN, {}), (LSTM_FCN, {'shuffle': False}), (InceptionTime, {}), (XceptionTime, {}), (OmniScaleCNN, {}), (mWDN, {'levels': 4})]
+def fft_dbn_train():
+    computer_setup()
+    option=Option()
+    loader = Loader(option)
+    x_3d,y_3d=loader.load_3d()
 
-    results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'accuracy', 'time'])
-    for i, (arch, k) in enumerate(archs):
-        model = create_model(arch, dls=dls, **k)
-        print(model.__class__.__name__)
-        learn = Learner(dls, model,  metrics=accuracy)
-        start = time.time()
-        learn.fit_one_cycle(100, 1e-3)
-        elapsed = time.time() - start
-        vals = learn.recorder.values[-1]
-        results.loc[i] = [arch.__name__, k, count_parameters(model), vals[0], vals[1], vals[2], int(elapsed)]
-        results.sort_values(by='accuracy', ascending=False, kind='stable', ignore_index=True, inplace=True)
-        # clear_output()
-        display(results)
+    preprocessor=PreProcessor_3d(x_3d,y_3d,option)
+    fft_x_3d,_=preprocessor.fft_3d(x_3d)
+    fft_x_2d=preprocessor.x_3d_to_2d(fft_x_3d)
+
+    fft_x_2d_tensor=torch.from_numpy(fft_x_2d).float()
+    dbn = DBN(fft_x_2d_tensor.shape[1], option)
+    dbn.train_DBN(fft_x_2d_tensor)
+
+
+    _, fft_x_2d_features = dbn.reconstructor(fft_x_2d_tensor)
+    samples=preprocessor.num_person*preprocessor.num_gesture
+    fft_x_3d_features=preprocessor.x_2d_to_3d(fft_x_2d_features,samples=samples)
+    return fft_x_3d_features
+
+    # x,y=window(origin_x)
+
+    # x_new,y_new=train_fft_dbn(origin_x=origin_x,option=option)
+
+    # splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
+    # tfms  = [None, [Categorize()]]
+    # batch_tfms=[TSStandardize(),TSNormalize()]
+    # dsets = TSDatasets(x, y, tfms=tfms, splits=splits, inplace=True)
+    # dsets
+    # bs=64
+    # dls   = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[bs, bs*2])
+
+    # archs = [(FCN, {}), (ResNet, {}), (xresnet1d34, {}), (ResCNN, {}), 
+    #         (LSTM, {'n_layers':1, 'bidirectional': False}), (LSTM, {'n_layers':2, 'bidirectional': False}), (LSTM, {'n_layers':3, 'bidirectional': False}), 
+    #         (LSTM, {'n_layers':1, 'bidirectional': True}), (LSTM, {'n_layers':2, 'bidirectional': True}), (LSTM, {'n_layers':3, 'bidirectional': True}),
+    #         (LSTM_FCN, {}), (LSTM_FCN, {'shuffle': False}), (InceptionTime, {}), (XceptionTime, {}), (OmniScaleCNN, {}), (mWDN, {'levels': 4})]
+
+    # results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'accuracy', 'time'])
+    # for i, (arch, k) in enumerate(archs):
+    #     model = create_model(arch, dls=dls, **k)
+    #     print(model.__class__.__name__)
+    #     learn = Learner(dls, model,  metrics=accuracy)
+    #     start = time.time()
+    #     learn.fit_one_cycle(100, 1e-3)
+    #     elapsed = time.time() - start
+    #     vals = learn.recorder.values[-1]
+    #     results.loc[i] = [arch.__name__, k, count_parameters(model), vals[0], vals[1], vals[2], int(elapsed)]
+    #     results.sort_values(by='accuracy', ascending=False, kind='stable', ignore_index=True, inplace=True)
+    #     # clear_output()
+    #     display(results)
 
 
 
@@ -183,18 +202,10 @@ def tsai_main():
     
     print(111)
 
-def tsai_valid():
-    learn = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
-    dls = learn.dls
-    valid_dl = dls.valid
-    valid_probas, valid_targets, valid_preds = learn.get_preds(dl=valid_dl, with_decoded=True)
-    valid_probas, valid_targets, valid_preds
-    b=(valid_targets == valid_preds).float().mean()
-    print(b)
-    learn.show_probas()
 
 
-tsai_main()
+
+fft_dbn_train()
 # tsai_valid()
 # load()
 

@@ -27,6 +27,8 @@ class Option:
             self.min_concatenate_length = 10
             self.max_concatenate_length = 20
 
+            self.window_length=30
+            self.window_stride=30
             self.test_rate=0.1
 
             if self.is_concatenate:
@@ -63,7 +65,7 @@ class Option:
             self.mode='bernoulli'
             self.gpu=True
             self.k=3
-            self.savefile='dbn.pt'
+            self.savefile='./models/dbn_feature_extractor.pt'
 
     def __init__(self):
         self.load_opt = Option.Load_opt()
