@@ -51,7 +51,7 @@ class Option:
             self.optimizer='adam'
             self.gpu=True
             self.savefile=None
-            self.early_stopping_patience=5
+            self.early_stopping_patience=50
             self.is_shuffle = True
             self.visible_units = (1+preprocess_opt.ssa_save_length*int(preprocess_opt.is_ssa) +
                                     int(preprocess_opt.is_fft))*preprocess_opt.num_channel*preprocess_opt.concatenate_length
@@ -61,7 +61,7 @@ class Option:
     class Dbn_opt:
         def __init__(self,rbm_opt,load_opt) -> None:
             # dbn
-            self.layers = [8,10,12]
+            self.layers = [3600]
             self.mode='bernoulli'
             self.gpu=True
             self.k=3

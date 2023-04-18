@@ -42,12 +42,29 @@ class PreProcessor_3d:
         return new_x
 
     def x_2d_to_3d(self,x,samples):
-        x_2d_samples=int(samples)
-        x_2d_features=x.shape[1]
-        x_2d_steps=int(x.shape[0]/x_2d_samples)
-        new_x=np.zeros((x_2d_samples,x_2d_features,x_2d_steps))
-        for i in range(x_2d_samples):
-            new_x[i:(i+1),:,:]=x[i*x_2d_steps:(i+1)*x_2d_steps,:].T
+        x_3d_samples=int(samples)
+        x_3d_features=x.shape[1]
+        x_3d_steps=int(x.shape[0]/x_3d_samples)
+        new_x=np.zeros((x_3d_samples,x_3d_features,x_3d_steps))
+        for i in range(x_3d_samples):
+            new_x[i:(i+1),:,:]=x[i*x_3d_steps:(i+1)*x_3d_steps,:].T
+        return new_x
+
+    def concatenate(self,x):
+        new_x=np.zeros((x.shape[0],x.shape[1]*x.shape[2]))
+        for i in range(x.shape[2]):
+            new_x[:,i*x.shape[1]:(i+1)*x.shape[1]]=x[:,:,i]
+        return new_x
+    
+    def deconcatenate(self,x,steps):
+        # x shape =(samples,features*steps)
+        #new x shape =(samples,features,steps)
+        x_3d_samples=x.shape[0]
+        x_3d_features=int(x.shape[1]/steps)
+        x_3d_steps=int(steps)
+        new_x=np.zeros((x_3d_samples,x_3d_features,x_3d_steps))
+        for i in range(x_3d_steps):
+            new_x[:,:,i]=x[:,i*x_3d_features:(i+1)*x_3d_features]
         return new_x
 
     def window_3d(self,x):
@@ -55,7 +72,7 @@ class PreProcessor_3d:
         stride = self.window_stride
         x_length=int((self.num_row_perpage+stride-window_length)/stride)
         x_new_samples=x_length*self.num_person*self.num_gesture
-        x_new_features=self.num_channel
+        x_new_features=x.shape[1]
         x_new_steps=window_length
         x_new=np.zeros((x_new_samples,x_new_features,x_new_steps))
         y_new=np.zeros((x_new_samples,))
