@@ -30,3 +30,49 @@ learn.fit_one_cycle(1, 1e-3)
 
 (ts, (cat, cont)),yb = mixed_dls.one_batch()
 learn.model((ts, (cat, cont))).shape
+
+
+
+
+
+
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+# 假设 ModelA 和 ModelB 是两个预训练模型的类
+class ModelA(nn.Module):
+    # ...
+
+class ModelB(nn.Module):
+    # ...
+
+# 加载预训练模型和权重
+modelA = ModelA()
+modelB = ModelB()
+modelA.load_state_dict(torch.load('modelA_weights.pth'))
+modelB.load_state_dict(torch.load('modelB_weights.pth'))
+
+# 自定义一个新的模型，结合两个预训练模型的输出
+class ParallelModel(nn.Module):
+    def __init__(self, modelA, modelB, num_classes):
+        super(ParallelModel, self).__init__()
+        self.modelA = modelA
+        self.modelB = modelB
+        self.classifier = nn.Linear(modelA.output_size + modelB.output_size, num_classes)
+        
+    def forward(self, x):
+        outA = self.modelA(x)
+        outB = self.modelB(x)
+        out = torch.cat((outA, outB), dim=1)
+        out = self.classifier(out)
+        return out
+
+# 创建并行模型实例
+num_classes = 10  # 假设有10个分类
+parallel_model = ParallelModel(modelA, modelB, num_classes)
+
+# 定义损失函数和优化器
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(parallel_model.parameters(), lr=0.001)

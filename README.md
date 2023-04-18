@@ -8,9 +8,23 @@ win11 pytorch conda
 
 详见requirements.txt/environment.yaml
 
-## 依赖
+## 参考
 
 <https://github.com/timeseriesAI/tsai>
+
+<https://timeseriesai.github.io/tsai/>
+
+<https://github.com/lutzroeder/Netron>
+
+<https://github.com/hfawaz/InceptionTime>
+
+Fawaz, H. I., Lucas, B., Forestier, G., Pelletier, C., Schmidt, D. F., Weber, J. & Petitjean, F. (2019). InceptionTime: Finding AlexNet for Time Series Classification. arXiv preprint arXiv:1909.04939.
+
+## TO DO
+
+神经网络并联
+
+网络参数优化
 
 ## 效果展示
 
