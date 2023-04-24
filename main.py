@@ -113,7 +113,7 @@ def model_compare():
         os.system('cls' if os.name == 'nt' else 'clear')
         display(results)
 
-def two_model_train():
+def preload():
 
     computer_setup()
     option=Option()
@@ -125,10 +125,15 @@ def two_model_train():
     fft_x_3d,y=preprocessor.window_3d(fft_x_3d_temp)
 
     x_3d,y=preprocessor.window_3d(x_3d)
+    return x_3d,fft_x_3d,y
+    
+    
+    
+def train_two_model(x_3d,fft_x_3d,y):
     splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
     tfms  = [None, [Categorize()]]
-    batch_tfms=[TSStandardize(),TSNormalize()]
     x_dsets = TSDatasets(x_3d, y, tfms=tfms, splits=splits, inplace=True)
+    batch_tfms=[TSStandardize(),TSNormalize()]
     bs=64
     x_dls   = TSDataLoaders.from_dsets(x_dsets.train, x_dsets.valid, bs=[bs, bs*2],batch_tfms=batch_tfms)
     x_model = build_ts_model(XceptionTime, dls=x_dls)
@@ -148,7 +153,56 @@ def two_model_train():
     learn.save_all(path='models', dls_fname='fft_dls', model_fname='fft_model', learner_fname='fft_learner')
 
 
-two_model_train()
+# two_model_train()
+def load_two_model():
+    x_learn = load_learner_all(path='models', dls_fname='x_dls', model_fname='x_model', learner_fname='x_learner')
+    dls = x_learn.dls
+    valid_dl = dls.valid
+    valid_probas, valid_targets, valid_preds = x_learn.get_preds(dl=valid_dl, with_decoded=True)
+    valid_probas, valid_targets, valid_preds
+    print("x model accuracy=    "+str((valid_targets == valid_preds).float().mean()))
+    
+    
+    fft_learn=load_learner_all(path='models', dls_fname='fft_dls', model_fname='fft_model', learner_fname='fft_learner')
+    dls = fft_learn.dls
+    valid_dl = dls.valid
+    valid_probas, valid_targets, valid_preds = fft_learn.get_preds(dl=valid_dl, with_decoded=True)
+    valid_probas, valid_targets, valid_preds
+    print("fft model accuracy=    "+str((valid_targets == valid_preds).float().mean()))
+    return x_learn,fft_learn
+
+def dbn_train(x_3d,fft_x_3d,y,x_learn,fft_learn):
+
+    splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
+    tfms  = [None, [Categorize()]] 
+    batch_tfms=[TSStandardize(),TSNormalize()]
+    bs=64
+
+    x_dsets = TSDatasets(x_3d, y, tfms=tfms, splits=splits, inplace=True)
+    x_dls   = TSDataLoaders.from_dsets(x_dsets.train, x_dsets.valid, bs=[bs, bs*2],batch_tfms=batch_tfms)
+    
+    fft_dsets = TSDatasets(fft_x_3d, y, tfms=tfms, splits=splits, inplace=True)
+    fft_dls   = TSDataLoaders.from_dsets(fft_dsets.train, fft_dsets.valid, bs=[bs, bs*2],batch_tfms=batch_tfms)
+
+    x_probas, x_targets, x_preds = x_learn.get_preds(dl=x_dls.train, with_decoded=True)
+    fft_probas, fft_targets, fft_preds = fft_learn.get_preds(dl=fft_dls.train, with_decoded=True)
+    
+    print((x_targets == x_preds).float().mean())
+    print((fft_targets == fft_preds).float().mean())
+    print(111)
+    
+    
+x_3d,fft_x_3d,y=preload()
+# train_two_model(x_3d,fft_x_3d,y)
+x_learn,fft_learn=load_two_model()  
+dbn_train(x_3d,fft_x_3d,y,x_learn,fft_learn)
+
+
+
+# 将test111作为输入分别导入x_model和fft_model,并将两模型的输出分别保存为x_out和y_out
+# test111_tensor = torch.Tensor(test111)
+# x_out = x_model(test111_tensor)
+# y_out = fft_model(test111_tensor)
 
 
 
