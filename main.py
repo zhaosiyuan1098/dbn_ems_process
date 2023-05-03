@@ -139,6 +139,9 @@ def train_two_model(x_3d,fft_x_3d,y):
     x_dls   = TSDataLoaders.from_dsets(x_dsets.train, x_dsets.valid, bs=[bs, bs*2],batch_tfms=batch_tfms)
     x_model = build_ts_model(XceptionTime, dls=x_dls)
 
+    valid_dls_before_learn=x_dls.valid
+    valid_dls_before_learn_ds=x_dls.valid_ds
+
     splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
     tfms  = [None, [Categorize()]]
     fft_dsets = TSDatasets(fft_x_3d, y, tfms=tfms, splits=splits, inplace=True)
@@ -148,11 +151,15 @@ def train_two_model(x_3d,fft_x_3d,y):
 
     learn = Learner(fft_dls, fft_model, metrics=[accuracy, RocAuc()])
     learn.fit_one_cycle(100, 1e-3)
-    learn.save_all(path='models', dls_fname='x_dls', model_fname='x_model', learner_fname='x_learner')
-    learn = Learner(x_dls, x_model, metrics=[accuracy, RocAuc()])
-    learn.fit_one_cycle(100, 1e-3)
     learn.save_all(path='models', dls_fname='fft_dls', model_fname='fft_model', learner_fname='fft_learner')
 
+    learn = Learner(x_dls, x_model, metrics=[accuracy, RocAuc()])
+    learn.fit_one_cycle(100, 1e-3)
+    learn.save_all(path='models', dls_fname='x_dls', model_fname='x_model', learner_fname='x_learner')
+    
+    dls_after_learn=learn.dls
+    valid_dls_after_learn=dls_after_learn.valid
+    valid_dls_after_learn_ds=dls_after_learn.valid_ds
     return x_model,fft_model
 
 # two_model_train()
@@ -176,14 +183,23 @@ def load_two_model():
   
     
 def dbn_train(x_3d,fft_x_3d,y,):
-    x_learn = load_learner("./models/x_learner.pkl")
     splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=7, shuffle=True)
-    X_test = x_3d[splits[1]]
     y_test = y[splits[1]]
-    x_probas, x_targets, x_preds,x_loss  = x_learn.get_X_preds(X_test,y_test,bs=64,with_loss=True, with_decoded=True,)
+    
+    x_learn = load_learner("./models/x_learner.pkl")
+    x_test = x_3d[splits[1]]
+    x_probas, x_targets, x_preds,x_loss  = x_learn.get_X_preds(x_test,y_test,bs=64,with_loss=True, with_decoded=True,)
+    
+    fft_learn = load_learner("./models/fft_learner.pkl")
+    fft_test = fft_x_3d[splits[1]]
+    fft_probas, fft_targets, fft_preds,fft_loss  = fft_learn.get_X_preds(fft_test,y_test,bs=64,with_loss=True, with_decoded=True,)
+    
     print(x_targets)
     print(x_preds)
-    print(x_loss)
+    print(fft_targets.shape)
+    print(fft_preds.shape)
+    print("x model accuracy=    "+str((x_targets == x_preds).float().mean()))
+
     
 
     
