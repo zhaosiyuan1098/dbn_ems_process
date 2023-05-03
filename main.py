@@ -9,7 +9,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader
 from tsai.all import *
 from tsai.inference import get_X_preds
 
@@ -176,7 +176,7 @@ def load_two_model():
     return x_learn,fft_learn
   
     
-def dbn_train(x_3d,fft_x_3d,y,):
+def dbn_pre(x_3d,fft_x_3d,y,):
     splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=55, shuffle=True)
     tfms  = [None, [Categorize()]]
     bs=64
@@ -202,16 +202,74 @@ def dbn_train(x_3d,fft_x_3d,y,):
     print(x_preds)
     print(x_probas) 
     
-    xx=totensor(x_probas)
     x_probas_array=toarray(x_probas)
     fft_probas_array=toarray(fft_probas)
-    return 0
+    dbn_x=np.zeros((x_probas_array.shape[0],x_probas_array.shape[1]+fft_probas_array.shape[1]))
+    dbn_x[:, 0:x_probas_array.shape[1]] = x_probas_array
+    dbn_x[:, x_probas_array.shape[1]:x_probas_array.shape[1]+fft_probas_array.shape[1]] = fft_probas_array
+    dbn_x=torch.from_numpy(dbn_x).float()
+      
+    return dbn_x,x_targets
     
     
+def dbn_model_gen(dbn_x):
+    
+    option=Option()
+    dbn=DBN(dbn_x.shape[1],option)
+    dbn.train_DBN(dbn_x)
+    model = dbn.initialize_model()
+    model = torch.nn.Sequential(model, torch.nn.Softmax(dim=1))
+    torch.save(model, './models/dbn_pretrained_model.pt')
+    
+    return model
+    
+def dbn_train(dbn_x,y):
+    # 创建 PyTorch 数据集
+    model = torch.load('./models/dbn_pretrained_model.pt')
+    dataset = TensorDataset(dbn_x, y)
+
+    # 创建 DataLoader
+    batch_size = 32
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    # 定义损失函数和优化器
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    num_epochs = 20
+
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        for inputs, labels in dataloader:
+            # 将梯度归零
+            optimizer.zero_grad()
+
+            # 前向传播
+            outputs = model(inputs)
+
+            # 计算损失
+            loss = criterion(outputs, labels)
+
+            # 反向传播
+            loss.backward()
+
+            # 更新权重
+            optimizer.step()
+
+            running_loss += loss.item()
+
+        # 打印每个 epoch 的平均损失
+        print(f"Epoch {epoch + 1}, Loss: {running_loss / len(dataloader)}")
+
 # my_main()
 x_3d,fft_x_3d,y=preload()
 # train_two_model(x_3d,fft_x_3d,y)
-x_learn,fft_learn=load_two_model()  
-dbn_train(x_3d,fft_x_3d,y)
+# x_learn,fft_learn=load_two_model()
+
+dbn_x,y=dbn_pre(x_3d,fft_x_3d,y)
+#  model=dbn_model_gen(dbn_x=dbn_x)
+dbn_train(dbn_x,y)
+
+
+
 
 

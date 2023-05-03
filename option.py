@@ -45,7 +45,7 @@ class Option:
             # rbm
             self.batch_size = 64
             self.learning_rate = 0.0001
-            self.epochs = 500
+            self.epochs = 3000
             self.mode='bernoulli' 
             self.k=3
             self.optimizer='adam'
