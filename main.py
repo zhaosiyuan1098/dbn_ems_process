@@ -134,9 +134,8 @@ def train_two_model(x_3d,fft_x_3d,y):
     splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=23, shuffle=True)
     tfms  = [None, [Categorize()]]
     x_dsets = TSDatasets(x_3d, y, tfms=tfms, splits=splits, inplace=True)
-    batch_tfms=[TSStandardize(),TSNormalize()]
     bs=64
-    x_dls   = TSDataLoaders.from_dsets(x_dsets.train, x_dsets.valid, bs=[bs, bs*2],batch_tfms=batch_tfms)
+    x_dls   = TSDataLoaders.from_dsets(x_dsets.train, x_dsets.valid, bs=[bs, bs*2])
     x_model = build_ts_model(XceptionTime, dls=x_dls)
 
     valid_dls_before_learn=x_dls.valid
@@ -178,13 +177,12 @@ def load_two_model():
   
     
 def dbn_train(x_3d,fft_x_3d,y,):
-    splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=96, shuffle=True)
+    splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=55, shuffle=True)
     tfms  = [None, [Categorize()]]
     bs=64
-    batch_tfms=[TSStandardize(),TSNormalize()]
     
     x_dsets = TSDatasets(x_3d, y, tfms=tfms, splits=splits, inplace=True)
-    x_dls   = TSDataLoaders.from_dsets(x_dsets.train, x_dsets.valid, bs=[bs, bs*2],batch_tfms=batch_tfms)
+    x_dls   = TSDataLoaders.from_dsets(x_dsets.train, x_dsets.valid, bs=[bs, bs*2])
 
     fft_dsets = TSDatasets(fft_x_3d, y, tfms=tfms, splits=splits, inplace=True)
     fft_dls   = TSDataLoaders.from_dsets(fft_dsets.train, fft_dsets.valid, bs=[bs, bs*2])
@@ -199,11 +197,15 @@ def dbn_train(x_3d,fft_x_3d,y,):
     print("x model accuracy=    "+str((x_targets == x_preds).float().mean()))
     print("fft model accuracy=    "+str((fft_targets == fft_preds).float().mean()))
     
-    xx=np.array(x_preds)
     
     print(x_targets)
     print(x_preds)
     print(x_probas) 
+    
+    xx=totensor(x_probas)
+    x_probas_array=toarray(x_probas)
+    fft_probas_array=toarray(fft_probas)
+    return 0
     
     
 # my_main()
