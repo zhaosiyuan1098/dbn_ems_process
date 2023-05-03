@@ -61,7 +61,7 @@ class Option:
     class Dbn_opt:
         def __init__(self,rbm_opt,load_opt) -> None:
             # dbn
-            self.layers = [3600]
+            self.layers = [20,16]
             self.mode='bernoulli'
             self.gpu=True
             self.k=3
