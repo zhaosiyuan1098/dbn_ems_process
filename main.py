@@ -184,74 +184,25 @@ def load_two_model():
     
 def dbn_train(x_3d,fft_x_3d,y,):
     splits = get_splits(y, valid_size=.2,test_size=0.1, stratify=True, random_state=7, shuffle=True)
-    y_test = y[splits[1]]
+    y_test = y[splits[0]]
     
     x_learn = load_learner("./models/x_learner.pkl")
-    x_test = x_3d[splits[1]]
+    x_test = x_3d[splits[0]]
     x_probas, x_targets, x_preds,x_loss  = x_learn.get_X_preds(x_test,y_test,bs=64,with_loss=True, with_decoded=True,)
     
     fft_learn = load_learner("./models/fft_learner.pkl")
-    fft_test = fft_x_3d[splits[1]]
+    fft_test = fft_x_3d[splits[0]]
     fft_probas, fft_targets, fft_preds,fft_loss  = fft_learn.get_X_preds(fft_test,y_test,bs=64,with_loss=True, with_decoded=True,)
     
     print(x_targets)
     print(x_preds)
-    print(fft_targets.shape)
-    print(fft_preds.shape)
-    print("x model accuracy=    "+str((x_targets == x_preds).float().mean()))
+    print(fft_targets)
+    print(fft_preds)
 
-    
 
-    
-    
 x_3d,fft_x_3d,y=preload()
 # train_two_model(x_3d,fft_x_3d,y)
 x_learn,fft_learn=load_two_model()  
 dbn_train(x_3d,fft_x_3d,y)
 
 
-
-
-
-
-
-# 将test111作为输入分别导入x_model和fft_model,并将两模型的输出分别保存为x_out和y_out
-# test111_tensor = torch.Tensor(test111)
-# x_out = x_model(test111_tensor)
-# y_out = fft_model(test111_tensor)
-
-
-
-
-# archs = [(FCN, {}), (ResNet, {}), (xresnet1d34, {}), (ResCNN, {}), 
-#         (LSTM, {'n_layers':1, 'bidirectional': False}), (LSTM, {'n_layers':2, 'bidirectional': False}), (LSTM, {'n_layers':3, 'bidirectional': False}), 
-#         (LSTM, {'n_layers':1, 'bidirectional': True}), (LSTM, {'n_layers':2, 'bidirectional': True}), (LSTM, {'n_layers':3, 'bidirectional': True}),
-#         (LSTM_FCN, {}), (LSTM_FCN, {'shuffle': False}), (InceptionTime, {}), (XceptionTime, {}), (OmniScaleCNN, {}), (mWDN, {'levels': 4})]
-
-# results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'accuracy', 'time'])
-# for i, (arch, k) in enumerate(archs):
-#     model = create_model(arch, dls=dls, **k)
-#     print(model.__class__.__name__)
-#     learn = Learner(dls, model,  metrics=accuracy)
-#     start = time.time()
-#     learn.fit_one_cycle(100, 1e-3)
-#     elapsed = time.time() - start
-#     vals = learn.recorder.values[-1]
-#     results.loc[i] = [arch.__name__, k, count_parameters(model), vals[0], vals[1], vals[2], int(elapsed)]
-#     results.sort_values(by='accuracy', ascending=False, kind='stable', ignore_index=True, inplace=True)
-#     os.system('cls' if os.name == 'nt' else 'clear')
-#     display(results)
-
-
-
-# fft_x_2d=preprocessor.x_3d_to_2d(fft_x_3d)
-
-# dbn = DBN(fft_x_2d_tensor.shape[1], option)
-# dbn.train_DBN(fft_x_2d_tensor)
-
-# model = dbn.initialize_model()
-# _, fft_x_2d_features = dbn.reconstructor(fft_x_2d_tensor)
-
-# samples=preprocessor.num_person*preprocessor.num_gesture
-# steps=option.preprecess_opt.window_length
-# fft_x_3d_features=preprocessor.deconcatenate(fft_x_2d_features,steps=steps)
