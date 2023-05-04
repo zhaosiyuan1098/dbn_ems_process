@@ -228,7 +228,7 @@ def dbn_model_gen(dbn_x_train):
     
     return model
     
-def dbn_train(dbn_x_train,y):
+def dbn_train(dbn_x_train,y_train,dbn_x_valid,y_valid):
     # 创建 PyTorch 数据集
     model = torch.load('./models/dbn_pretrained_model.pt')
     dataset = TensorDataset(dbn_x_train, y)
@@ -267,8 +267,13 @@ def dbn_train(dbn_x_train,y):
     torch.save(model, './models/dbn_trained_model.pt')
     
     
-def combine():
-    return 0
+def dbn_train2(dbn_x_train,y_train,dbn_x_valid,y_valid):
+    model = torch.load('./models/dbn_pretrained_model.pt')
+    model, progress = train(model, dbn_x_train,y_train, dbn_x_train,y_train,dbn_x_valid,y_valid)
+    progress = pd.DataFrame(np.array(progress))
+    progress.columns = ['epochs', 'test loss', 'train loss', 'test acc', 'train acc']
+    progress.to_csv('DBN_with_pretraining_classifier.csv', index=False)
+    torch.save(model, './models/dbn_trained_model.pt')
 
 
 
@@ -329,12 +334,8 @@ x_3d,fft_x_3d,y=preload()
 
 dbn_x_train,y_train,dbn_x_valid,y_valid=dbn_pre(x_3d,fft_x_3d,y)
 # model=dbn_model_gen(dbn_x_train=dbn_x_train)
-dbn_train(dbn_x_train,y_train)
-model = torch.load('./models/dbn_pretrained_model.pt')
-model, progress = train(model, dbn_x_train,y_train, dbn_x_train,y_train,dbn_x_valid,y_valid)
-progress = pd.DataFrame(np.array(progress))
-progress.columns = ['epochs', 'test loss', 'train loss', 'test acc', 'train acc']
-progress.to_csv('DBN_with_pretraining_classifier.csv', index=False)
+dbn_train2(dbn_x_train,y_train,dbn_x_valid,y_valid)
+
 
 
 
