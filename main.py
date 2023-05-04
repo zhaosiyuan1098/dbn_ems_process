@@ -12,6 +12,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tsai.all import *
 from tsai.inference import get_X_preds
+from tqdm import trange
 
 def my_main():
 
@@ -189,53 +190,57 @@ def dbn_pre(x_3d,fft_x_3d,y,):
     
     
     x_learn = load_learner("./models/x_learner.pkl")
-    x_probas, x_targets, x_preds = x_learn.get_preds(dl=x_dls.train, with_decoded=True)
+    x_probas_train, y_train, _ = x_learn.get_preds(dl=x_dls.train, with_decoded=True)
+    x_probas_valid, y_valid, _ = x_learn.get_preds(dl=x_dls.valid, with_decoded=True)
     
     fft_learn = load_learner("./models/fft_learner.pkl")
-    fft_probas, fft_targets, fft_preds = fft_learn.get_preds(dl=fft_dls.train, with_decoded=True)
+    fft_probas_train, _, _ = fft_learn.get_preds(dl=fft_dls.train, with_decoded=True)
+    fft_probas_valid, _, _ = fft_learn.get_preds(dl=fft_dls.valid, with_decoded=True)
+
     
-    print("x model accuracy=    "+str((x_targets == x_preds).float().mean()))
-    print("fft model accuracy=    "+str((fft_targets == fft_preds).float().mean()))
+    print(x_probas_train) 
     
+    x_probas_train_array=toarray(x_probas_train)
+    fft_probas_train_array=toarray(fft_probas_train)
+    dbn_x_train=np.zeros((x_probas_train_array.shape[0],x_probas_train_array.shape[1]+fft_probas_train_array.shape[1]))
+    dbn_x_train[:, 0:x_probas_train_array.shape[1]] = x_probas_train_array
+    dbn_x_train[:, x_probas_train_array.shape[1]:x_probas_train_array.shape[1]+fft_probas_train_array.shape[1]] = fft_probas_train_array
+    dbn_x_train=torch.from_numpy(dbn_x_train).float()
     
-    print(x_targets)
-    print(x_preds)
-    print(x_probas) 
-    
-    x_probas_array=toarray(x_probas)
-    fft_probas_array=toarray(fft_probas)
-    dbn_x=np.zeros((x_probas_array.shape[0],x_probas_array.shape[1]+fft_probas_array.shape[1]))
-    dbn_x[:, 0:x_probas_array.shape[1]] = x_probas_array
-    dbn_x[:, x_probas_array.shape[1]:x_probas_array.shape[1]+fft_probas_array.shape[1]] = fft_probas_array
-    dbn_x=torch.from_numpy(dbn_x).float()
+    x_probas_valid_array=toarray(x_probas_valid)
+    fft_probas_valid_array=toarray(fft_probas_valid)
+    dbn_x_valid=np.zeros((x_probas_valid_array.shape[0],x_probas_valid_array.shape[1]+fft_probas_valid_array.shape[1]))
+    dbn_x_valid[:, 0:x_probas_valid_array.shape[1]] = x_probas_valid_array
+    dbn_x_valid[:, x_probas_valid_array.shape[1]:x_probas_valid_array.shape[1]+fft_probas_valid_array.shape[1]] = fft_probas_valid_array
+    dbn_x_valid=torch.from_numpy(dbn_x_valid).float()
       
-    return dbn_x,x_targets
+    return dbn_x_train,y_train,dbn_x_valid,y_valid
     
     
-def dbn_model_gen(dbn_x):
+def dbn_model_gen(dbn_x_train):
     
     option=Option()
-    dbn=DBN(dbn_x.shape[1],option)
-    dbn.train_DBN(dbn_x)
+    dbn=DBN(dbn_x_train.shape[1],option)
+    dbn.train_DBN(dbn_x_train)
     model = dbn.initialize_model()
     model = torch.nn.Sequential(model, torch.nn.Softmax(dim=1))
     torch.save(model, './models/dbn_pretrained_model.pt')
     
     return model
     
-def dbn_train(dbn_x,y):
+def dbn_train(dbn_x_train,y):
     # 创建 PyTorch 数据集
     model = torch.load('./models/dbn_pretrained_model.pt')
-    dataset = TensorDataset(dbn_x, y)
+    dataset = TensorDataset(dbn_x_train, y)
 
     # 创建 DataLoader
-    batch_size = 32
+    batch_size = 64
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # 定义损失函数和优化器
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    num_epochs = 20
+    num_epochs = 500
 
     for epoch in range(num_epochs):
         running_loss = 0.0
@@ -259,17 +264,77 @@ def dbn_train(dbn_x,y):
 
         # 打印每个 epoch 的平均损失
         print(f"Epoch {epoch + 1}, Loss: {running_loss / len(dataloader)}")
+    torch.save(model, './models/dbn_trained_model.pt')
+    
+    
+def combine():
+    return 0
+
+
+
+def generate_batches(x, y, batch_size=64):
+	x = x[:int(x.shape[0] - x.shape[0]%batch_size)]
+	x = torch.reshape(x, (x.shape[0]//batch_size, batch_size, x.shape[1]))
+	y = y[:int(y.shape[0] - y.shape[0]%batch_size)]
+	y = torch.reshape(y, (y.shape[0]//batch_size, batch_size))
+	return {'x':x, 'y':y}
+
+def test(model, train_x, train_y, test_x, test_y, epoch):
+	criterion = torch.nn.CrossEntropyLoss()
+
+	output_test = model(test_x)
+	loss_test = criterion(output_test, test_y).item()
+	output_test = torch.argmax(output_test, axis=1)
+	acc_test = torch.sum(output_test == test_y).item()/test_y.shape[0]
+
+	output_train = model(train_x)
+	loss_train = criterion(output_train, train_y).item()
+	output_train = torch.argmax(output_train, axis=1)
+	acc_train = torch.sum(output_train == train_y).item()/train_y.shape[0]
+
+	return epoch, loss_test, loss_train, acc_test, acc_train
+
+
+def train(model, x, y, train_x, train_y, test_x, test_y, epochs=500):
+	dataset = generate_batches(x, y)
+
+	criterion = torch.nn.CrossEntropyLoss()
+	optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+	training = trange(epochs)
+	progress = []
+	for epoch in training:
+		running_loss = 0
+		acc = 0
+		for batch_x, target in zip(dataset['x'], dataset['y']):
+			output = model(batch_x)
+			loss = criterion(output, target)
+			output = torch.argmax(output, dim=1)
+			acc += torch.sum(output == target).item()/target.shape[0]
+			optimizer.zero_grad()
+			loss.backward()
+			optimizer.step()
+			running_loss += loss.item()
+		running_loss /= len(dataset['y'])
+		acc /= len(dataset['y'])
+		progress.append(test(model, train_x, train_y, test_x, test_y, epoch+1))
+		training.set_description(str({'epoch': epoch+1, 'loss': round(running_loss, 4), 'acc': round(acc, 4)}))
+
+	return model, progress
+
 
 # my_main()
 x_3d,fft_x_3d,y=preload()
 # train_two_model(x_3d,fft_x_3d,y)
 # x_learn,fft_learn=load_two_model()
 
-dbn_x,y=dbn_pre(x_3d,fft_x_3d,y)
-#  model=dbn_model_gen(dbn_x=dbn_x)
-dbn_train(dbn_x,y)
-
-
+dbn_x_train,y_train,dbn_x_valid,y_valid=dbn_pre(x_3d,fft_x_3d,y)
+# model=dbn_model_gen(dbn_x_train=dbn_x_train)
+dbn_train(dbn_x_train,y_train)
+model = torch.load('./models/dbn_pretrained_model.pt')
+model, progress = train(model, dbn_x_train,y_train, dbn_x_train,y_train,dbn_x_valid,y_valid)
+progress = pd.DataFrame(np.array(progress))
+progress.columns = ['epochs', 'test loss', 'train loss', 'test acc', 'train acc']
+progress.to_csv('DBN_with_pretraining_classifier.csv', index=False)
 
 
 
