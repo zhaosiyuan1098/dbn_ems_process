@@ -13,6 +13,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from tsai.all import *
 from tsai.inference import get_X_preds
 from tqdm import trange
+import matplotlib.pyplot as plt
 
 def my_main():
 
@@ -76,6 +77,18 @@ def fft_dbn_train():
     fft_x_3d_features=preprocessor.x_2d_to_3d(fft_x_2d_features,samples=samples)
     return fft_x_3d_features
 
+
+def plot_losses(learn):
+    losses = learn.recorder.values
+    train_losses = [x[0] for x in losses]
+    valid_losses = [x[1] for x in losses]
+    
+    plt.plot(train_losses, label='Train loss')
+    plt.plot(valid_losses, label='Validation loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
 
 def model_compare():
     computer_setup()
@@ -168,12 +181,22 @@ def load_two_model():
     valid_dl = dls.valid
     valid_probas, valid_targets, valid_preds = x_learn.get_preds(dl=valid_dl, with_decoded=True)
     print("x model accuracy=    "+str((valid_targets == valid_preds).float().mean()))
+    
+    
+    x_learn.show_probas()
+    x_learn.plot_confusion_matrix()
+    x_learn.feature_importance()
+    x_learn.step_importance()
  
     fft_learn=load_learner_all(path='models', dls_fname='fft_dls', model_fname='fft_model', learner_fname='fft_learner')
     dls = fft_learn.dls
     valid_dl = dls.valid
     valid_probas, valid_targets, valid_preds = fft_learn.get_preds(dl=valid_dl, with_decoded=True)
-    print("fft model accuracy=    "+str((valid_targets == valid_preds).float().mean()))
+
+    fft_learn.show_probas()
+    fft_learn.plot_confusion_matrix()
+    fft_learn.feature_importance()
+    fft_learn.step_importance()
     return x_learn,fft_learn
   
     
@@ -330,7 +353,7 @@ def train(model, x, y, train_x, train_y, test_x, test_y, epochs=500):
 # my_main()
 x_3d,fft_x_3d,y=preload()
 # train_two_model(x_3d,fft_x_3d,y)
-# x_learn,fft_learn=load_two_model()
+x_learn,fft_learn=load_two_model()
 
 dbn_x_train,y_train,dbn_x_valid,y_valid=dbn_pre(x_3d,fft_x_3d,y)
 # model=dbn_model_gen(dbn_x_train=dbn_x_train)
