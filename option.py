@@ -4,7 +4,7 @@ class Option:
 
             # load
             self.folder_path = "./data"
-            self.num_person = 1
+            self.num_person = 4
             self.num_gesture = 12
             self.num_channel = 6
             self.num_row_perpage = 4165
