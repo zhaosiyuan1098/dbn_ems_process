@@ -55,7 +55,6 @@ def my_main():
     # dbn_last_layer.train(model,train_x,train_y,train_x,train_y,test_x,test_y,100)
     print(model)
 
-
 def fft_dbn_train():
     computer_setup()
     option = Option()
@@ -107,7 +106,7 @@ def model_compare():
     bs = 64
     dls = TSDataLoaders.from_dsets(dsets.train, dsets.valid, bs=[bs, bs * 2])
 
-    archs = [(FCN, {}), (ResNet, {}), (xresnet1d34, {}), (ResCNN, {}),
+    archs = [(FCN, {}), (ResNet, {}),  (ResCNN, {}),
              (LSTM, {'n_layers': 1, 'bidirectional': False}), (LSTM, {'n_layers': 2, 'bidirectional': False}),
              (LSTM, {'n_layers': 3, 'bidirectional': False}),
              (LSTM, {'n_layers': 1, 'bidirectional': True}), (LSTM, {'n_layers': 2, 'bidirectional': True}),
@@ -398,8 +397,10 @@ def switcher(a=1):
         dbn_train(dbn_x_train, y_train, dbn_x_valid, y_valid)
         dbn_show()
 
+    if a ==4:
+        model_compare()
+
 
 ranxxx = 23  # 两模型训练用的随机种子
 ranyyy = 23  # dbn训练用的随机种子
-
-switcher(1)
+switcher(4)
